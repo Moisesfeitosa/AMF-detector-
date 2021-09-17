@@ -1,0 +1,19 @@
+# acrescentando controle do processo de treinamento:
+callbacks = [ModelCheckpoint(training_path + 'modelo_para_hifas.h5', verbose=1, save_best_only=True), # mudar conforme o diretório do usuário 
+             EarlyStopping(patience=3, monitor='val_loss'),
+             ReduceLROnPlateau(monitor='val_loss', factor=.5, patience=3, min_lr=1e-6)]
+             
+            
+STEP_SIZE=2000
+
+
+# treinamento do modelo
+results = model.fit_generator(generator = train_generator, 
+                              #class_weight=weight_dict,
+                              validation_data = val_generator, 
+                              steps_per_epoch = STEP_SIZE,
+                              validation_steps = STEP_SIZE,
+                              epochs=50, 
+                              use_multiprocessing=True,
+                              callbacks=callbacks,
+                              verbose = 1)
