@@ -1,0 +1,91 @@
+import cv2 
+from google.colab import drive
+
+drive.mount("drive") #montagem do drive 
+
+!nvidia-smi #checagem de qual é a GPU no qual está sendo rodado o código 
+
+
+# importação dos pacotes necessários para a obtenção do modelo
+import tensorflow as tf
+from tensorflow.keras.layers import Conv2D, Dropout, MaxPooling2D, Lambda, Input
+from tensorflow.keras.layers import Conv2DTranspose, concatenate
+from tensorflow.keras import Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, ReduceLROnPlateau
+import os
+import random
+import numpy as np
+from tqdm import tqdm 
+from skimage.io import imread, imshow, imsave
+from skimage.transform import resize
+import matplotlib.pyplot as plt
+
+
+
+#aumentação de dados e seleção dos dados de treinamento 
+data_gen_args =  dict(rescale = 1./255,
+                      rotation_range=90,
+                      shear_range = 0.2,
+                      horizontal_flip = True,
+                      vertical_flip = True,
+                      width_shift_range = [-20,20],
+                      height_shift_range = [-20, 20],
+                      brightness_range=[0.2,1.0],
+                      zoom_range=[0.5,1.0])
+
+mask_data_gen_args =  dict(rescale = 1./255,
+                      rotation_range=90,
+                      shear_range = 0.2,
+                      horizontal_flip = True,
+                      vertical_flip = True,
+                      width_shift_range = [-20,20],
+                      height_shift_range = [-20, 20],
+                      brightness_range=[0.2,1.0],
+                      zoom_range=[0.5,1.0],
+                      preprocessing_function = lambda x: np.where(x>0, 1, 0).astype(x.dtype))
+
+train_datagen = ImageDataGenerator(**data_gen_args)
+valid_datagen = ImageDataGenerator(mask_data_gen_args, rescale=1./255)
+seed = 1
+batch_size = 10
+target_size = (448, 448)
+training_path = "/content/drive/My Drive/hifas/training/" #diretório com as imagens e máscaras de treinamento
+valid_path = "/content/drive/My Drive/hifas/test/" #diretório com as imagens e máscaras de validação 
+train_image_generator = train_datagen.flow_from_directory(
+    training_path + "images",
+    class_mode=None,
+    color_mode='grayscale',
+    target_size = target_size,
+    batch_size = batch_size,
+    seed = seed)
+
+train_mask_generator = train_datagen.flow_from_directory(
+    training_path + "masks",
+    class_mode=None,
+    color_mode='grayscale',
+    target_size = target_size,
+    batch_size = batch_size,
+    seed = seed)
+
+valid_image_generator = valid_datagen.flow_from_directory(
+    valid_path + "images",
+    class_mode=None,
+    color_mode='grayscale',
+    target_size = target_size,
+    batch_size = batch_size,
+    seed = seed)
+
+valid_mask_generator = valid_datagen.flow_from_directory(
+    valid_path + "masks",
+    color_mode='grayscale',
+    class_mode=None,
+    target_size = target_size,
+    batch_size = batch_size,
+    seed = seed)
+
+train_generator = zip(train_image_generator, train_mask_generator)
+train_generator = (pair for pair in train_generator)
+val_generator = zip(valid_image_generator, valid_mask_generator)
+val_generator = (pair for pair in val_generator)
